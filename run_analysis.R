@@ -2,54 +2,35 @@ library(dplyr)
 
 ############ reading all the files contained in the folder ################################
 
+features        <- read.table("./features.txt",header=FALSE)
+activity_labels   <- read.table("./activity_labels.txt",header=FALSE)
 
-features <- read.table("UCI HAR Dataset/features.txt", col.names = c("n","functions"))
-activities <- read.table("UCI HAR Dataset/activity_labels.txt", col.names = c("code", "activity"))
-subject_test <- read.table("UCI HAR Dataset/test/subject_test.txt", col.names = "subject")
-x_test <- read.table("UCI HAR Dataset/test/X_test.txt", col.names = features$functions)
-y_test <- read.table("UCI HAR Dataset/test/y_test.txt", col.names = "code")
-subject_train <- read.table("UCI HAR Dataset/train/subject_train.txt", col.names = "subject")
-x_train <- read.table("UCI HAR Dataset/train/X_train.txt", col.names = features$functions)
-y_train <- read.table("UCI HAR Dataset/train/y_train.txt", col.names = "code")
+subject_train    <-read.table("./train/subject_train.txt", header=FALSE, col.names = "Subject")
+x_train          <- read.table("./train/X_train.txt", header=FALSE, col.names = features[, 2])
+y_train          <- read.table("./train/y_train.txt", header=FALSE, col.names = "Activity")
+y_train   <- merge(y_train, activity_labels, by.x = "Activity" , by.y = "V1", all.x = TRUE)
+y_train   <- rename(y_train, activity_name = V2)
+
+subject_test   <- read.table("./test/subject_test.txt", header=FALSE, col.names = "Subject")
+x_test   <- read.table("./test/x_test.txt", header=FALSE, col.names = features[, 2])
+y_test   <- read.table("./test/y_test.txt", header=FALSE, col.names = "Activity")
+y_test   <- merge(y_test, activity_labels, by.x = "Activity" , by.y = "V1", all.x = TRUE)
+y_test   <- rename(y_test, activity_name = V2)
 
 
 ##################### Joining the data #####################3
 
-X <- rbind(x_train, x_test)
-Y <- rbind(y_train, y_test)
-Subject <- rbind(subject_train, subject_test)
-Merged_Data <- cbind(Subject, Y, X)
+test_data <- cbind(subject_test, y_test,  x_test)
+train_data <- cbind(subject_train, y_train, x_train)
 
-
-TidyData <- Merged_Data %>% select(subject, code, contains("mean"), contains("std"))
-
-########################## Fixing labels ########################################3
-
-names(TidyData)[2] = "activity"
-names(TidyData)<-gsub("Acc", "Accelerometer", names(TidyData))
-names(TidyData)<-gsub("Gyro", "Gyroscope", names(TidyData))
-names(TidyData)<-gsub("BodyBody", "Body", names(TidyData))
-names(TidyData)<-gsub("Mag", "Magnitude", names(TidyData))
-names(TidyData)<-gsub("^t", "Time", names(TidyData))
-names(TidyData)<-gsub("^f", "Frequency", names(TidyData))
-names(TidyData)<-gsub("tBody", "TimeBody", names(TidyData))
-names(TidyData)<-gsub("-mean()", "Mean", names(TidyData), ignore.case = TRUE)
-names(TidyData)<-gsub("-std()", "STD", names(TidyData), ignore.case = TRUE)
-names(TidyData)<-gsub("-freq()", "Frequency", names(TidyData), ignore.case = TRUE)
-names(TidyData)<-gsub("angle", "Angle", names(TidyData))
-names(TidyData)<-gsub("gravity", "Gravity", names(TidyData))
+data_set <- rbind(test_data, train_data)
 
 
 ################ independet data set with the average of the data ##################
 
 
-FinalData <- TidyData %>%
-        group_by(subject, activity) %>%
-        summarise_all(funs(mean))
-write.table(FinalData, "FinalData.txt", row.name=FALSE)
+tidy_data <- data_set %>%
+        group_by(Subject, Activity, activity_name) %>%
+        summarise_all(.funs = mean)
 
-
-str(FinalData)
-
-
-FinalData
+write.table("mean_resume.txt", row.name=FALSE)
